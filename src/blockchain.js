@@ -121,17 +121,17 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            let temps = parseInt(message.split(':')[1]);
+            let mesTime = parseInt(message.split(':')[1]);
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
-            if (currentTime-temps < (5*60)){
+            if (currentTime-mesTime < (5*60)) {
                 if(bitcoinMessage.verify(message, address, signature)) {
                     let block = new BlockClass.Block({"owner":address, "star":star});
                     self._addBlock(block);
                     resolve(block);
-                }else{
+                } else {
                     reject(Error('Message not verified'));
                 }
-            }else{
+            } else {
                 reject(Error('Overtime error (over 5 min)'));
             }
         });
@@ -145,11 +145,9 @@ class Blockchain {
      */
     getBlockByHash(hash) {
         let self = this;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const block = self.chain.filter(block => block.hash === hash);
-            if (typeof block === 'undefined'){
-                reject(Error("Hash not found"));
-            } else {
+            if (typeof block != 'undefined') {
                 resolve(block); 
             }
         });
@@ -185,7 +183,7 @@ class Blockchain {
             self.chain.forEach(async(temp)=> {
                 let data = await temp.getBData();
                 if(data){
-                    if(data.owner === address){
+                    if(data.owner === address) {
                       stars.push(data);
                     }
                 }
@@ -206,7 +204,7 @@ class Blockchain {
         return new Promise(async (resolve) => {
             let validatePromises = [];
             self.chain.forEach((block, index) => {
-                if (block.height > 0) {
+                if (block.height > 0) { // only check if block is not just the genesis
                     const previousBlock = self.chain[index - 1];
                     if (block.previousBlockHash !== previousBlock.hash) {
                         const errorMessage = `Block ${index} previousBlockHash set to ${block.previousBlockHash},`
@@ -224,10 +222,10 @@ class Blockchain {
                             const errorMessage = `Block (${invalidBlock.hash}) invalid`;
                             errorLog.push(errorMessage);
                         }
-                    });
-
-                    resolve(errorLog);
-                });
+                    }
+                );
+                resolve(errorLog);
+            });
         });
     }
 
