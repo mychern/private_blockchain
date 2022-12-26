@@ -10,7 +10,6 @@
  */
 
 const SHA256 = require('crypto-js/sha256');
-const { response } = require('express');
 const hex2ascii = require('hex2ascii');
 
 class Block {
@@ -36,24 +35,25 @@ class Block {
      *  5. Resolve true or false depending if it is valid or not.
      *  Note: to access the class values inside a Promise code you need to create an auxiliary value `let self = this;`
      */
-     validate() {
+    validate() {
         let self = this;
         return new Promise((resolve, reject) => {
-          try {
-            // Save in auxiliary variable the current block hash
-            const curHash = self.hash;
-            self.hash = null;
-            // Recalculate the hash of the Block
-            const newHash = SHA256(JSON.stringify(self)).toString();
-            self.hash = curHash;
-            // Comparing if the hashes changed with the one before
-            // return true if match, false otherwise
-            resolve(curHash === newHash);
-          } catch (err) {
-            reject(new Error(err)); 
-          }
+            try {
+                // Save in auxiliary variable the current block hash
+                const temp = self.hash;
+                self.hash = null;
+                // Recalculate the hash of the Block
+                const newHash = SHA256(JSON.stringify(self)).toString();
+                self.hash = temp;
+                // Comparing if the hashes changed
+                // Returning the Block is valid
+                resolve(self.hash === newHash);
+            } catch(error) {
+                // Returning the Block is not valid
+                reject(new Error(error));
+            }
         });
-      }
+    }
 
     /**
      *  Auxiliary Method to return the block body (decoding the data)
@@ -65,22 +65,23 @@ class Block {
      *     or Reject with an error.
      */
     getBData() {
-        let self=this;
-
-        return new Promise( async (resolve, reject) => {          
-            let enc_data = this.body;       // Getting the encoded data saved in the Block                                    
-            let dec_data = hex2ascii(enc_data); // Decoding the data to retrieve the JSON representation of the object
-            let decdata_in_JSON=JSON.parse(dec_data); // Parse the data to an object to be retrieve.
-            // Resolve with the data if the object isn't the Genesis block
-            if (this.height == 0) {
-                resolve("Genesis block");
+        let self = this;
+        return new Promise((res, rej) => {
+            // Getting the encoded data saved in the Block
+            let encodedData = this.body;
+            // Decoding the data to retrieve the JSON representation of the object
+            let decodedData = hex2ascii(encodedData);
+            // Parse the data to an object to be retrieve.
+            let parsedData = JSON.parse(decodedData);
+            if (this.height != 0) {
+                // Resolve with the data if the object isn't the Genesis block
+                res(parsedData);
             } else {
-                resolve(decdata_in_JSON);
+                res("Genesis");
             }
         });
-
     }
 
 }
 
-module.exports.Block = Block                    // Exposing the Block class as a module
+module.exports.Block = Block;                    // Exposing the Block class as a module

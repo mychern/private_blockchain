@@ -61,25 +61,25 @@ class Blockchain {
      * Note: the symbol `_` in the method name indicates in the javascript convention 
      * that this method is a private method. 
      */
-     _addBlock(block) {
+    _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            block.height = self.chain.length; //get current height
-            block.time = new Date().getTime().toString().slice(0,-3); //get current time
-            if(self.chain.length>0){
-                block.previousBlockHash = self.chain[self.chain.length-1].hash; //get previous hash
+            // Assign certain mentioned values
+            block.height = self.chain.length;
+            block.time = new Date().getTime().toString().slice(0,-3);
+            if (self.chain.length > 0) {
+                block.previousBlockHash = self.chain[self.chain.length-1].hash;
             }
-            block.hash = SHA256(JSON.stringify(block)).toString(); //calculate hash
-            //Validation
-            console.debug('validation of chain starts here');
-            let errors = await self.validateChain(); //call the validate chain method
-            console.log(errors)
-            console.debug('Validation of chain ended')
-            if (errors.length === 0 ){ //if no errors in blockchain
-                self.chain.push(block); //push new block
-                self.height++; //increment height
-                resolve(block) //resolve the new block
-            }else{
+            // Hash the updated block.
+            block.hash = SHA256(JSON.stringify(block)).toString();
+
+            // Validate
+            let errors = await self.validateChain();
+            if (errors.length === 0 ) {
+                self.chain.push(block);
+                self.height++;
+                resolve(block);
+            } else {
                 reject(errors);
             }
         });
@@ -95,8 +95,9 @@ class Blockchain {
      */
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
-            const OwnershipMessage = `${address}:${new Date().getTime().toString().slice(0, -3)}:starRegistry`; //construct the message as explained, with the address + time + starRegistry
-            resolve(OwnershipMessage);    
+             // address + time + starRegistry
+            const message = `${address}:${new Date().getTime().toString().slice(0, -3)}:starRegistry`;
+            resolve(message);   
         });
     }
 
@@ -146,11 +147,11 @@ class Blockchain {
         let self = this;
         return new Promise((resolve, reject) => {
             const block = self.chain.filter(block => block.hash === hash);
-            if (typeof block != 'undefined'){
+            if (typeof block === 'undefined'){
+                reject(Error("Hash not found"));
+            } else {
                 resolve(block); 
-            }else{
-                reject(Error("No block has this hash"))
-            }          
+            }
         });
     }
 
@@ -161,7 +162,7 @@ class Blockchain {
      */
     getBlockByHeight(height) {
         let self = this;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             let block = self.chain.filter(p => p.height === height)[0];
             if(block){
                 resolve(block);
@@ -177,19 +178,19 @@ class Blockchain {
      * Remember the star should be returned decoded.
      * @param {*} address 
      */
-     getStarsByWalletAddress(address) {
+    getStarsByWalletAddress (address) {
         let self = this;
         let stars = [];
-        return new Promise((resolve, reject) => { 
-             self.chain.forEach(async(b)=> {
-              let data = await b.getBData();
-              if(data){
-                  if(data.owner === address){
-                    stars.push(data);
-                  }
-              }
-          })
-         resolve(stars);
+        return new Promise((resolve) => {
+            self.chain.forEach(async(temp)=> {
+                let data = await temp.getBData();
+                if(data){
+                    if(data.owner === address){
+                      stars.push(data);
+                    }
+                }
+            })
+            resolve(stars);
         });
     }
 
@@ -199,34 +200,28 @@ class Blockchain {
      * 1. You should validate each block using `validateBlock`
      * 2. Each Block should check the with the previousBlockHash
      */
-     validateChain() {
+    validateChain() {
         let self = this;
         let errorLog = [];
-        return new Promise((resolve) => {
-            // Go through each block and make sure stored hash of
-            // previous block matches actual hash of previous block
+        return new Promise(async (resolve) => {
             let validatePromises = [];
             self.chain.forEach((block, index) => {
                 if (block.height > 0) {
                     const previousBlock = self.chain[index - 1];
                     if (block.previousBlockHash !== previousBlock.hash) {
                         const errorMessage = `Block ${index} previousBlockHash set to ${block.previousBlockHash},`
-                                               ` inconsistent with the actual ${previousBlock.hash}`;
+                                                + ` inconsistent with the actual ${previousBlock.hash}`;
                         errorLog.push(errorMessage);
                     }
                 }
-
-                // Store promise to validate each block
                 validatePromises.push(block.validate());
             });
 
-            // Collect results of each block's validate call
-            Promise.all(validatePromises)
-                .then(validatedBlocks => {
+            Promise.all(validatePromises).then(validatedBlocks => {
                     validatedBlocks.forEach((valid, index) => {
                         if (!valid) {
                             const invalidBlock = self.chain[index];
-                            const errorMessage = `Block hash (${invalidBlock.hash}) is invalid`;
+                            const errorMessage = `Block (${invalidBlock.hash}) invalid`;
                             errorLog.push(errorMessage);
                         }
                     });
